@@ -1,0 +1,35 @@
+name: AI Newspaper
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # runs every day at 6 AM UTC
+  workflow_dispatch:       # allow manual run from GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AI Newspaper
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python ai_newspaper.py
+
+      - name: Commit & push results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add output/
+          git commit -m "📰 Update AI Newspaper"
+          git push
