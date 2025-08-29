@@ -1,65 +1,39 @@
-#!/usr/bin/env python3
-"""
-AI Newspaper MVP
-Fetches AI news + papers, summarizes with GPT, outputs Markdown.
-"""
-
-import os
-import feedparser
 from datetime import date
-from openai import OpenAI
+import os
+import glob
 
-# ---------- Config ----------
-RSS_FEEDS = [
-    "http://export.arxiv.org/rss/cs.AI",               # arXiv AI
-    "https://hnrss.org/newest?q=AI"                    # Hacker News AI
-]
+output_dir = "output"
+os.makedirs(output_dir, exist_ok=True)
 
-OUTPUT_DIR = "output"
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+today = date.today().strftime("%Y-%m-%d")
+output_file = os.path.join(output_dir, f"ai_news_{today}.md")
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("Set OPENAI_API_KEY as environment variable.")
+# Save today's edition
+with open(output_file, "w", encoding="utf-8") as f:
+    f.write("# 📰 AI Newspaper\n\n")
+    f.write(f"## Edition: {today}\n\n")
+    f.write(summary)  # <-- replace with your summary variable
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# --- Build homepage ---
+index_file = os.path.join(output_dir, "index.md")
 
-# ---------- Fetch articles ----------
-articles = []
-for feed_url in RSS_FEEDS:
-    feed = feedparser.parse(feed_url)
-    for entry in feed.entries[:3]:  # top 3 articles per feed
-        articles.append({
-            "title": entry.title,
-            "link": entry.link,
-            "summary": entry.get("summary", "")
-        })
+# Find all editions
+editions = sorted(glob.glob(os.path.join(output_dir, "ai_news_*.md")), reverse=True)
 
-# ---------- Summarize with GPT ----------
-prompt = f"""
-Summarize the following articles into a mini AI Newspaper:
-1. 3 Headlines
-2. 2 Research Highlights
-3. 1 Cool Tool or Project
-Keep it short and clear.
+with open(index_file, "w", encoding="utf-8") as f:
+    f.write("# 📰 AI Newspaper\n\n")
+    f.write("Welcome to your AI-powered daily newspaper! 📡\n\n")
 
-Articles:
-{articles}
-"""
+    # Show today's news directly
+    latest_file = editions[0]
+    with open(latest_file, "r", encoding="utf-8") as latest:
+        f.write("## 🗞️ Today's Edition\n\n")
+        f.write(latest.read())
+        f.write("\n\n---\n\n")
 
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.2,
-    max_tokens=600
-)
-
-summary = response.choices[0].message.content
-
-# ---------- Save Markdown ----------
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-out_file = os.path.join(OUTPUT_DIR, f"AI_Times_{date.today()}.md")
-with open(out_file, "w", encoding="utf-8") as f:
-    f.write(f"# 📰 AI Times — {date.today()}\n\n")
-    f.write(summary)
-
-print(f"✅ AI Newspaper saved to {out_file}")
+    # List archive links
+    f.write("## 📚 Archive\n\n")
+    for edition in editions:
+        filename = os.path.basename(edition)
+        date_str = filename.replace("ai_news_", "").replace(".md", "")
+        f.write(f"- [{date_str}]({filename.replace('.md','.html')})\n")
