@@ -14,7 +14,9 @@ output_file = os.path.join(output_dir, f"ai_news_{today_str}.md")
 with open(output_file, "w", encoding="utf-8") as f:
     f.write(f"# 📰 AI Newspaper – {today_str}\n\n")
     f.write("### Powered by AI, bringing you the latest in tech & trends\n\n")
-    f.write(summary)  # <-- replace with your summary variable
+    # Temporary placeholder for testing
+    summary = "📰 This is a placeholder for today's AI news summary. Content will appear here once the AI summary is implemented."
+    f.write(summary)
 
 # --- Build homepage (index.md) ---
 index_file = os.path.join("output", "index.md")
