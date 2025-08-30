@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-AI Newspaper MVP
-Fetches AI news, summarizes with GPT, outputs Markdown, organizes by month.
+AI Newspaper (Multi-page Edition)
+Generates a 16-page AI Newspaper with different sections, outputs in Markdown.
 """
 
 import os
-import glob
 from datetime import date
 from openai import OpenAI
 
@@ -14,74 +13,63 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 if not os.getenv("OPENAI_API_KEY"):
     raise RuntimeError("Set OPENAI_API_KEY as environment variable.")
 
-def get_ai_summary():
-    """Call GPT to generate AI news summary"""
-    prompt = """
-Summarize the top 3 AI news updates for today in markdown format.
-Include:
-- 3 Headlines
-- 2 Research Highlights
-- 1 Cool Tool or Project
-Keep it concise and clear.
-"""
+# ---------- Prompts for each section ----------
+SECTIONS = [
+    ("Page 1", "Main Headlines: Summarize 3 biggest AI news stories."),
+    ("Page 2", "Research Highlights: Summarize 2 new AI research papers."),
+    ("Page 3", "Cool Tools: Introduce 2-3 new AI tools, startups or repos."),
+    ("Page 4", "Entrepreneur Insights: How AI is impacting business."),
+    ("Page 5", "For Kids: Fun facts or beginner-level AI explanations."),
+    ("Page 6", "AI in Healthcare: Latest medical AI applications."),
+    ("Page 7", "AI in Education: Tools & research for learning."),
+    ("Page 8", "AI & Society: Ethics, regulations, policy."),
+    ("Page 9", "AI in Art & Creativity: Generative AI, music, design."),
+    ("Page 10", "AI in Gaming: Latest use of AI in gaming."),
+    ("Page 11", "Productivity & Work: AI in offices, workflow."),
+    ("Page 12", "Coding Corner: AI tools for developers."),
+    ("Page 13", "Future Trends: What’s next in AI."),
+    ("Page 14", "Interview / Quote of the Day."),
+    ("Page 15", "Startups & Funding News."),
+    ("Page 16", "Summary & Closing Notes."),
+]
+
+def generate_page(content_prompt):
+    """Ask GPT to generate one section of the newspaper"""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-        max_tokens=600
+        messages=[{"role": "user", "content": content_prompt}],
+        temperature=0.4,
+        max_tokens=700
     )
     return response.choices[0].message.content
 
 # ---------- Generate today's edition ----------
 today = date.today()
 month_folder = today.strftime("%Y-%m")
-output_dir = os.path.join("output", month_folder)
+output_dir = os.path.join("output", month_folder, today.strftime("%Y-%m-%d"))
 os.makedirs(output_dir, exist_ok=True)
 
-today_str = today.strftime("%Y-%m-%d")
-output_file = os.path.join(output_dir, f"ai_news_{today_str}.md")
+index_content = [f"# 📰 AI Newspaper – {today}\n\n",
+                 "### Powered by AI, 16-page daily digest\n\n",
+                 "---\n\n",
+                 "## 📑 Pages\n\n"]
 
-# Generate AI summary
-summary = get_ai_summary()
+# Generate all 16 pages
+for i, (title, prompt) in enumerate(SECTIONS, start=1):
+    print(f"Generating {title}...")
+    content = generate_page(prompt)
+    filename = f"page_{i:02d}.md"
+    filepath = os.path.join(output_dir, filename)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(f"# {title}\n\n")
+        f.write(content)
+    index_content.append(f"- [{title}]({today.strftime('%Y-%m-%d')}/{filename})\n")
 
-# Save today's edition
-with open(output_file, "w", encoding="utf-8") as f:
-    f.write(f"# 📰 AI Newspaper – {today_str}\n\n")
-    f.write("### Powered by AI, bringing you the latest in tech & trends\n\n")
-    f.write(summary)
-
-# ---------- Build homepage (index.md) ----------
+# Save index.md (homepage for today)
 index_file = os.path.join("output", "index.md")
-
-# Find all editions grouped by month
-months = sorted(glob.glob("output/[0-9][0-9][0-9][0-9]-[0-9][0-9]"), reverse=True)
-
 with open(index_file, "w", encoding="utf-8") as f:
-    # Title banner
-    f.write("# 📰 AI Newspaper\n\n")
-    f.write("> *Your daily AI-powered digest of tech, innovation & trends.*\n\n")
-    f.write("---\n\n")
-
-    # Show today's edition
-    with open(output_file, "r", encoding="utf-8") as latest:
-        f.write("## 🗞️ Today’s Edition\n\n")
-        f.write(latest.read())
-        f.write("\n\n---\n\n")
-
-    # Archive grouped by month
-    f.write("## 📚 Past Editions\n\n")
-    for month in months:
-        month_name = os.path.basename(month)
-        f.write(f"### {month_name}\n")
-        editions = sorted(glob.glob(os.path.join(month, "ai_news_*.md")), reverse=True)
-        for edition in editions:
-            filename = os.path.basename(edition)
-            date_str = filename.replace("ai_news_", "").replace(".md", "")
-            f.write(f"- [{date_str}]({month_name}/{filename.replace('.md','.html')})\n")
-        f.write("\n")
-
-    # Footer
+    f.writelines(index_content)
     f.write("\n---\n")
     f.write("© Powered by AI | Updated daily at 6 AM UTC\n")
 
-print(f"✅ AI Newspaper saved to {output_file}")
+print(f"✅ 16-page AI Newspaper generated in {output_dir}")
